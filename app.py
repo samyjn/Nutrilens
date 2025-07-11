@@ -3,17 +3,14 @@ from werkzeug.utils import secure_filename
 import cv2
 import numpy as np
 import os
-
+import gc
 import time
 import matplotlib.pyplot as plt
 
 
-
-
-
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024
 
-lund_img = "lundlelo.jpg"
 path_img_test = "to_test"
 
 net_path = "custom-yolov4-detector_best.weights"
@@ -23,8 +20,6 @@ cfg_path = "custom-yolov4-detector.cfg"
 results_path = "results"
 
 cropped_img_path = "cropped_img"
-
-#obj_file = r""
 
 img_results = "final_result_img"
 
@@ -122,10 +117,8 @@ def crop_img(input_image,img_save_path, img_name ,bb_cordinate):
 def detecting_objects(img1):
 
     height,width,channels = img1.shape
-
-    start_time = time.time()
     count = 0
-    blob = cv2.dnn.blobFromImage(img1,0.00392,(608,608),(0,0,0),True,crop=False)
+    blob = cv2.dnn.blobFromImage(img1,0.00392,(416,416),(0,0,0),True,crop=False)
 
     net.setInput(blob)
     outs = net.forward(outputlayers)
@@ -159,8 +152,9 @@ def detecting_objects(img1):
                 #bounding_box_dict['class_ids_'+str(count)] = [center_x,center_y,w,h]
                 count += 1
 
-    end_time = time.time()
-    print(f"all objects Bounding Boxes,Confidences,class id's are found in : {end_time - start_time} Seconds")
+    # print(f"all objects Bounding Boxes,Confidences,class id's are found in : {end_time - start_time} Seconds")
+    del blob, out
+    gc.collect()
     return class_ids , confidences , boxes
 
 
@@ -279,9 +273,7 @@ def getCalorie(label, volume): #volume in cm^3
 
 
 def getVolume(label, area, skin_area, pix_to_cm_multiplier, fruit_contour):
-    area_fruit = (area/skin_area)*skin_multiplier #area in cm^2
-    # lebel = string = label_list[i]
-    # #label = int(label)
+    area_fruit = (area/skin_area)*skin_multiplier
     volume = 100
 
     if label == label_list[1] or label == label_list[3] or label == label_list[4] or label == label_list[5] or label == label_list[7] : #sphere-apple,orange,kiwi,tomato,onion
@@ -532,7 +524,7 @@ def upload_image():
 def process_image(filepath):
     img1 = cv2.imread(filepath)
 
-    img1 = cv2.resize(img1,(608,608))
+    img1 = cv2.resize(img1,(416,416))
 
 
     
