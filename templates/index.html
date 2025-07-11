@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predict calories for your food item</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        #result img {
+            max-width: 100%;
+            height: auto;
+            max-height: 300px; /* Adjust the max-height as needed */
+        }
+
+        #result video {
+        width: 100%; /* Set the width to 100% of its container */
+        height: auto; /* Let the height adjust automatically */
+        max-height: 500px; /* Adjust the max-height as needed */
+    }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5 mb-4">Predict calories for your food item</h1>
+        
+        <div id="result"></div>
+        <div class="row">
+            <div class="col-md-6">
+                <button id="captureButton" class="btn btn-primary mb-3">Capture Image</button>
+                <button id="refreshButton" class="btn btn-secondary mb-3">Refresh</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS (Optional, if you need JavaScript components) -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <script>
+        var mediaStream;
+
+        window.onload = function() {
+            var constraints = { video: { facingMode: 'environment' } };
+            navigator.mediaDevices.getUserMedia(constraints)
+            .then(function(stream) {
+                mediaStream = stream;
+                var video = document.createElement('video');
+                video.srcObject = stream;
+                video.onloadedmetadata = function(e) {
+                    video.play();
+                };
+                document.getElementById('result').appendChild(video);
+            })
+            .catch(function(err) {
+                console.error('Error accessing camera:', err);
+            });
+        };
+
+        document.getElementById('captureButton').addEventListener('click', function() {
+            var video = document.querySelector('video');
+            var canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            var context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            var imgUrl = canvas.toDataURL('image/png');
+            var img = document.createElement('img');
+            img.src = imgUrl;
+            document.getElementById('result').innerHTML = '';
+            document.getElementById('result').appendChild(img);
+            var formData = new FormData();
+            formData.append('file', dataURItoBlob(imgUrl), 'image.png');
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                var imgUrl = URL.createObjectURL(blob);
+                var img = document.createElement('img');
+                img.src = imgUrl;
+                document.getElementById('result').innerHTML = '';
+                document.getElementById('result').appendChild(img);
+
+            });
+
+            // Stop accessing the camera
+            mediaStream.getTracks().forEach(track => track.stop());
+        });
+
+        document.getElementById('refreshButton').addEventListener('click', function() {
+            location.reload();
+        });
+
+        function dataURItoBlob(dataURI) {
+            var byteString = atob(dataURI.split(',')[1]);
+            var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+            var ab = new ArrayBuffer(byteString.length);
+            var ia = new Uint8Array(ab);
+            for (var i = 0; i < byteString.length; i++) {
+                ia[i] = byteString.charCodeAt(i);
+            }
+            var blob = new Blob([ab], {type: mimeString});
+            return blob;
+        }
+    </script>
+</body>
+</html>
